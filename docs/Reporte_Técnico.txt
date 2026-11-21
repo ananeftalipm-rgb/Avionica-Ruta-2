@@ -1,0 +1,128 @@
+\documentclass[10pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish]{babel}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage{url}
+\usepackage[margin=1.6cm]{geometry}
+\usepackage{float}
+
+\title{\vspace{-1.4cm}\large\textbf{Reporte Técnico: Diseño de Hardware y Acondicionamiento de Señal}\vspace{-0.4cm}}
+\author{\small Ana Neftali Pérez Montero — Ingeniería Aeroespacial (1.er Semestre) — Ruta 2}
+\date{\small 21 Noviembre 2026}
+
+\begin{document}
+
+\maketitle
+
+\section{Objetivo y Descripción General del Sistema}
+\subsection{Objetivo}
+Con este circuito se busca limpiar el ruido de alta frecuencia usando un filtro de Sallen-Key de $150\text{ Hz}$ aproximadamente y siendo alimentado por $3.3\text{ V}$; también bajar el voltaje de una batería LiPo 2S a un nivel seguro de entre $2.03\text{ V}$ y $2.84\text{ V}$ para que se pueda leer sin dañar la entrada de $3.3\text{ V}$.
+
+\subsection{Filtro Sallen-Key y Divisor de Voltaje para Batería LiPo 2S}
+Este filtro está diseñado para dejar pasar las señales lentas que nos interesan y limpia el ruido de alta frecuencia que está arriba de los $150\text{ Hz}$. Funciona usando el amplificador operacional \texttt{LT1490} alimentado con $3.3\text{ V}$, además lleva un capacitor conectado entre \texttt{VCC} y el \texttt{GND} para mantener estable su alimentación.El divisor de voltaje baja el voltaje de una batería LiPo 2S a un voltaje seguro que está entre $2.03\text{ V}$ y $2.84\text{ V}$. Así se puede medir sin pasarse del límite de $3.3\text{ V}$ de la entrada y lleva un capacitor a tierra para ayudar a limpiar el ruido.
+
+
+\section{Decisiones Técnicas}
+Partí de un diseño sacado de un video de YouTube, pero le faltaban varias modificaciones y ajustes para adaptarlo a lo que pedía la ruta y a los voltajes reales. Elegí el amplificador operacional \texttt{LT1490} porque trabaja bien con una alimentación simple ($3.3\text{ V}$), no requiere una fuente dual negativa y también permite manejar señales cerca de sus rieles en un entorno de aviónica. Para el filtro de Sallen-Key puse 2 resistencias de $10\text{ k}\Omega$, un capacitor de $150\text{ nF}$ y otro de $75\text{ nF}$ para lograr que tuviera una respuesta cercana a Butterworth, con valores comerciales accesibles. Además, agregué un capacitor de desacoplo de $100\text{ nF}$ entre \texttt{VCC} y \texttt{GND} para lograr estabilizar la alimentación del op-amp. En el divisor de voltaje de la batería LiPo 2S elegí una resistencia de $100\text{ k}\Omega$ en serie con \texttt{VBAT} y otra de $51\text{ k}\Omega$ que iba hacia \texttt{GND}; esto hace que la tensión se baje a un rango de entre $2.03\text{ V}$ y $2.84\text{ V}$, manteniéndola por debajo del límite de $3.3\text{ V}$ de la entrada sin cargar demasiado la batería. También coloqué un capacitor de $100\text{ nF}$ en paralelo al \texttt{GND} porque esto ayuda a filtrar el ruido. Usé etiquetas y conectores como el \texttt{Conn\_01x02}, llevando un pin a la señal y el otro al \texttt{GND} para tener todo ordenado.
+
+\subsection{Preguntas de la Parte B: Divisor de Voltaje}
+\begin{itemize}
+  \item \textbf{¿Por qué suele ponerse un capacitor en paralelo con la resistencia inferior del divisor?} Ayuda a disminuir el ruido de alta frecuencia hacia \texttt{GND} y aporta carga rápida durante el muestreo del ADC.
+  \item \textbf{¿Qué problema da al ADC una impedancia de salida muy alta?} Hace más lenta la carga del capacitor interno de muestreo del ADC, esto puede provocar errores o lecturas imprecisas en \texttt{VSENSE\_ADC}.
+\end{itemize}
+
+\section{Bitácora de Obstáculos}
+Al arrancar con el primer circuito tomé como base un video de YouTube; me costó bastante porque iba casi en ceros y el diseño que venía en el video no se adaptaba como tal a lo que me pedía el problema, entonces muchas cosas no salían a la primera. Para resolverlo, fui revisando punto por punto qué fallaba, ajusté valores y conexiones. Utilicé Gemini para preguntarle muchas cosas básicas sobre cómo usar el programa o cómo realizar ciertos ajustes, como poner componentes o \emph{label net}.
+
+Gracias a lo que aprendí en esta primera parte, lo siguiente se me hizo más sencillo porque ya tenía una idea de cómo funcionaba, entonces cuando algo no reaccionaba como quería, me podía dar una idea de corregirlo o lo solucionaba mucho más rápido que al inicio, que daba mil vueltas.
+
+Inicié con LTspice porque KiCad no me reaccionaba; al final lo solucioné y realicé nuevamente el mismo esquemático que ya había realizado en el otro programa. Fue bastante sencillo porque era lo mismo que ya había hecho antes, solo que algunas cosas se realizaban un poco diferente.
+
+\section{Cálculos Teóricos}
+
+\subsection{Parte A: Filtro Sallen-Key ($\sim 150\text{ Hz}$)}
+
+Frecuencia de corte (Ecuación~\ref{eq:fc}):
+\begin{equation}
+f_c = \frac{1}{2\pi \sqrt{R_1 R_2 C_1 C_2}} = \frac{1}{2\pi \sqrt{(10\,\text{k}\Omega)(10\,\text{k}\Omega)(150\,\text{nF})(75\,\text{nF})}} \approx 150.05\,\text{Hz}
+\label{eq:fc}
+\end{equation}
+
+Factor de calidad (Ecuación~\ref{eq:q}):
+\begin{equation}
+Q = \frac{1}{2}\sqrt{\frac{C_1}{C_2}} = \frac{1}{2}\sqrt{\frac{150\,\text{nF}}{75\,\text{nF}}} \approx 0.707
+\label{eq:q}
+\end{equation}
+
+\subsection{Parte B: Divisor de Voltaje para Batería LiPo 2S}
+
+Voltaje de salida hacia el ADC (Ecuación~\ref{eq:v_adc}):
+\begin{equation}
+V_{\text{SENSE\_ADC}} = V_{\text{BAT}}\left(\frac{R_4}{R_3 + R_4}\right)
+\label{eq:v_adc}
+\end{equation}
+
+Con batería descargada ($V_{\text{BAT}} = 6.0\,\text{V}$, Ecuación~\ref{eq:v_min}):
+\begin{equation}
+V_{\text{SENSE\_ADC, min}} = 6.0\,\text{V}\left(\frac{51\,\text{k}\Omega}{100\,\text{k}\Omega + 51\,\text{k}\Omega}\right) \approx 2.03\,\text{V}
+\label{eq:v_min}
+\end{equation}
+
+Con batería a plena carga ($V_{\text{BAT}} = 8.4\,\text{V}$, Ecuación~\ref{eq:v_max}):
+\begin{equation}
+V_{\text{SENSE\_ADC, max}} = 8.4\,\text{V}\left(\frac{51\,\text{k}\Omega}{100\,\text{k}\Omega + 51\,\text{k}\Omega}\right) \approx 2.84\,\text{V}
+\label{eq:v_max}
+\end{equation}
+
+
+\section{Gráficas}
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.65\textwidth,height=0.20\textheight,keepaspectratio]{Diseño KiCad completo.jpeg}
+  \caption{Esquemático completo en KiCad (filtro Sallen-Key $\sim 150\,\text{Hz}$ con \texttt{LT1490} a $+3.3\,\text{V}$, divisor LiPo 2S y \texttt{Conn\_01x02}).}
+  \label{fig:esquematico_kicad}
+\end{figure}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.65\textwidth,height=0.18\textheight,keepaspectratio]{Simulación AC_150Hz.jpeg}
+  \caption{Respuesta en frecuencia AC en LTspice: cursor en $\approx 148.58\,\text{Hz}$ ($\approx -2.98\,\text{dB}$).}
+  \label{fig:filtro_150hz}
+\end{figure}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.65\textwidth,height=0.20\textheight,keepaspectratio]{Simulación AC_1KHz.jpeg}
+  \caption{Respuesta en frecuencia AC a $1\,\text{kHz}$ en LTspice: atenuación de $\approx -5.88\,\text{dB}$.}
+  \label{fig:filtro_1khz}
+\end{figure}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.65\textwidth,height=0.20\textheight,keepaspectratio]{Simulación transitoria.jpeg}
+  \caption{Simulación transitoria en LTspice ($0\,\text{ms}$ a $200\,\text{ms}$) para \texttt{V(n002)} y \texttt{V(vout)}.}
+  \label{fig:simulacion_transitoria}
+\end{figure}
+
+\section{Referencias}
+\begin{thebibliography}{9}
+\sloppy
+
+\bibitem{yt_sallenkey}
+Video de referencia sobre diseno de filtro y acondicionamiento de senal (YouTube). Disponible en: \url{https://youtu.be/_nAI8ZiZIxg?si=6c8XP6wNOOojjbSj}
+
+\bibitem{wilae_sallenkey}
+Wilaeba Electronica, \emph{Filtro pasa-bajos activo de 2do orden Sallen-Key}, 2017. Disponible en: \url{https://wilaebaelectronica.blogspot.com/2017/01/filtro-pasa-bajos-activo-de-2do-orden-sallen-key.html}
+
+\bibitem{laelectro_divisor}
+La Electro Escuela, \emph{Divisor de tension}. Disponible en: \url{https://laelectroescuela.com/divisor-de-tension/}
+
+\bibitem{gemini_asistente}
+Google Gemini, \emph{Asistente de inteligencia artificial utilizado como apoyo en calculos, simulacion, depuracion y redaccion tecnica en LaTeX}, 2026.
+
+\fussy
+\end{thebibliography}
+
+\end{document}
